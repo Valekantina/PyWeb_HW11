@@ -1,23 +1,19 @@
+from datetime import datetime, date
 from pydantic import BaseModel, EmailStr
-from datetime import date
-from typing import Optional
 
 
-class ContactSchema(BaseModel):
-    id: int
+class ContactModel(BaseModel):
     first_name: str
     last_name: str
     email: EmailStr
-    phone_number: str
-    birthday: Optional[date]
-    additional_info: Optional[str]
+    phone: str
+    date_of_birth: date
+
+
+class ContactResponse(ContactModel):
+    id: int
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         orm_mode = True
-
-
-class ContactBirthday(BaseModel):
-    id: int
-    first_name: str
-    last_name: str
-    birthday: date

@@ -1,63 +1,66 @@
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, Path, Query
+from fastapi import APIRouter, HTTPException, Depends, status, Query
 from sqlalchemy.orm import Session
 
-from src.database.connect import get_db
-from src.schemas import ContactSchema, ContactBirthday
+from src.database.db import get_db
+from src.schemas import ContactModel, ContactResponse
 from src.repository import contacts as repository_contacts
 
-router = APIRouter(prefix='/contacts', tags=['contacts'])
+router = APIRouter(prefix='/contacts', tags=["contacts"])
 
 
-@router.get("/", response_model=List[ContactSchema])
-async def read_contacts(limit: int = Query(10, le=1000), offset: int = 0, db: Session = Depends(get_db)) \
-        -> List[ContactSchema]:
-    contacts = await repository_contacts.get_contacts(limit, offset, db)
-    return contacts
-
-
-@router.get("/search", response_model=List[ContactSchema])
-async def search_contacts(query: str = Query(default='', min_length=1), db: Session = Depends(get_db)):
-    contacts = await repository_contacts.search_contacts(query, db)
-    return contacts
-
-
-@router.get("/birthday/", response_model=List[ContactBirthday])
-async def get_contacts_birthday(db: Session = Depends(get_db)):
-    birthdays = await repository_contacts.get_birthdays_week(db)
-    return birthdays
-
-
-@router.get("/{contact_id}", response_model=ContactSchema)
-async def get_contact(contact_id: int = Path(0, ge=0), db: Session = Depends(get_db)) -> ContactSchema:
-    contact = await repository_contacts.get_contact(contact_id, db)
-    if contact is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+@router.get("/", response_model=list[ContactResponse], name='Get a list of all contacts or contacts filtered by query parameters such as first name, last name or email')
+async def get_contact_by_params(skip: int = 0, limit: int = Query(default=10),
+                                first_name: Optional[str] = Query(
+                                    default=None),
+                                last_name: Optional[str] = Query(default=None),
+                                email: Optional[str] = Query(default=None),
+                                db: Session = Depends(get_db)):
+    contact = await repository_contacts.get_contacts(skip, limit, first_name, last_name, email, db)
+    if not contact:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Contacts with requested parameters not found")
     return contact
 
 
-@router.post("/", response_model=ContactSchema)
-async def create_contact(body: ContactSchema, db: Session = Depends(get_db)) -> ContactSchema:
-    contact = await repository_contacts.create_contact(body, db)
+@router.get("/birthdays", response_model=list[ContactResponse], name='Get list of contacts with birthdays for the next 7 days')
+async def get_birthdays(skip: int = 0, limit: int = Query(default=10), db: Session = Depends(get_db)):
+    contacts = await repository_contacts.get_contacts_birthdays(skip, limit, db)
+    if not contacts:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Contacts with birthdays for the next 7 days not found")
+    return contacts
+
+
+@router.get("/{contact_id}", response_model=ContactResponse, name='Get contact by id')
+async def get_contact(contact_id: int, db: Session = Depends(get_db)):
+    contact = await repository_contacts.get_contact_by_id(contact_id, db)
+    if contact is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Contact with requested id not found")
     return contact
 
 
-@router.put("/{contact_id}", response_model=ContactSchema)
-async def update_contact(body: ContactSchema, contact_id: int = Path(0, ge=0), db: Session = Depends(get_db)) \
-        -> ContactSchema:
-    contact = await repository_contacts.update_contact(body, contact_id, db)
+@router.post("/", response_model=ContactResponse, status_code=status.HTTP_201_CREATED)
+async def create_contact(body: ContactModel, db: Session = Depends(get_db)):
+    new_contact = await repository_contacts.create_contact(body, db)
+    return new_contact
+
+
+@router.put("/{contact_id}", response_model=ContactResponse)
+async def update_contact(body: ContactModel, contact_id: int, db: Session = Depends(get_db)):
+    contact = await repository_contacts.update_contact(contact_id, body, db)
     if contact is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Contact with requested id not found")
     return contact
 
 
 @router.delete("/{contact_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def remove_contact(contact_id: int = Path(0, ge=0), db: Session = Depends(get_db)):
+async def remove_tag(contact_id: int, db: Session = Depends(get_db)):
     contact = await repository_contacts.remove_contact(contact_id, db)
     if contact is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Contact with requested id not found")
     return contact
