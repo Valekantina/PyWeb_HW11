@@ -34,7 +34,7 @@ API повинен мати можливість виконувати насту
 - Надання документів для API
 - Використання модуля перевірки достовірності даних Pydantic
 
-**$\color{blue}Please$ $\color{blue}update$ $\color{blue}the$ $\color{green}src/database/config.ini$ $\color{blue}file$ $\color{blue}to$ $\color{blue}your$ $\color{blue}database$**
+**$\color{blue}Please$ $\color{blue}update$ $\color{blue}the$ $\color{green}src/database/config.ini$ $\color{blue}file$ $\color{blue}to$ $\color{blue}fit$ $\color{blue}your$ $\color{blue}database$**
 
 **$\color{blue}[DB]$**
 **url=postgresql://[user[:password]@][netloc][:port][/dbname]**
